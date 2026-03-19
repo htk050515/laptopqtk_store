@@ -90,31 +90,31 @@ frontend/
 
 ##  6. Cài đặt & chạy dự án
 
+###  Clone Repo
+git clone https://github.com/htk050515/laptopqtk_store.git
+cd laptopqtk_store
+
 ###  Backend (Django)
 
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate   # Linux/Mac
-venv\Scripts\activate      # Windows
+cd BE/laptop_store                                                                                                                                                   
+  python -m venv venv
+  source venv/Scripts/activate    # Windows Git Bash (Linux/Mac: source venv/bin/activate)
+  pip install -r requirements.txt             
 
-pip install -r requirements.txt
-
-python manage.py migrate
-python manage.py runserver
-```
-
----
-
+Sau đó:                                                                                                                                                                python manage.py migrate
+  python manage.py runserver  
+  
 ###  Frontend (React)
 
-```bash
-cd frontend
-npm install
-npm start
-```
+  cd FE/laptop 
+  npm install                                                                                                                                                          
+                                                                                                                                                                       
+  Tạo file .env:
+  # FE/laptop-store/.env
+  PORT=3000
+  REACT_APP_API_URL=http://localhost:8000
 
----
+  npm run dev
 
 ## 🔗 7. API chính
 
