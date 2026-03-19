@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@layer base {
+  @import "~slick-carousel/slick/slick.css";
+  @import "~slick-carousel/slick/slick-theme.css";
+  @import "~react-tooltip/dist/react-tooltip.css";
+  @layer base {
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      background: #fff;
+      font-size: 16px;
+      font-weight: 400;
+      color: #333;
+    }
+  }
+}
+
+/* Custom container styles */
+@layer utilities {
+  .container {
+    width: 100%;
+  }
+
+  @media (min-width: 576px) {
+    .container- {
+      width: 540px; /* For small screens */
+    }
+  }
+
+  @media (min-width: 768px) {
+    .container {
+      width: 720px; /* For medium screens */
+    }
+  }
+
+  @media (min-width: 992px) {
+    .container {
+      width: 960px; /* For large screens */
+    }
+  }
+
+  @media (min-width: 1200px) {
+    .container {
+      width: 1140px; /* For extra large screens */
+    }
+  }
+
+  @media (min-width: 1550px) {
+    .container {
+      width: 1320px; /* For double extra large screens */
+    }
+  }
+
+  .container-fluid {
+    width: 100%;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+}
