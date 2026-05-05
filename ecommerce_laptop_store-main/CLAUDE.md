@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 E-commerce platform (phone/laptop store) with a separated backend API and frontend SPA.
 
-- **Backend**: Django 4.2 + Django REST Framework API at `DJ/laptop_store/`
+- **Backend**: Django 4.2 + Django REST Framework API at `BE/laptop_store/`
 - **Frontend**: React 18 + Vite SPA at `FE/laptop-store/`
 - **Auth**: Token-based authentication with role-based access (admin/customer)
 - **Payment**: VNPay integration for invoice payments
@@ -14,7 +14,7 @@ E-commerce platform (phone/laptop store) with a separated backend API and fronte
 
 ## Commands
 
-### Backend (from `DJ/laptop_store/`)
+### Backend (from `BE/laptop_store/`)
 
 ```bash
 source venv/Scripts/activate       # Activate virtual environment (Windows Git Bash)
@@ -61,5 +61,5 @@ MySQL database `ecommerce_laptop_store`. Django migrations in each app's `migrat
 
 ## Environment Configuration
 
-- Backend `.env` (`DJ/laptop_store/.env`): MySQL config (root, no password, localhost:3306), storage path, VNPay keys, Celery/Redis URL, Gemini API key.
+- Backend `.env` (`BE/laptop_store/.env`): MySQL config (root, no password, localhost:3306), storage path, VNPay keys, Celery/Redis URL, Gemini API key.
 - Frontend `.env` (`FE/laptop-store/.env`): `PORT=3000`, `REACT_APP_API_URL=http://localhost:8000`.

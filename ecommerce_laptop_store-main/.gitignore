@@ -9,7 +9,7 @@ __pycache__/
 db.sqlite3
 
 # Virtual environment
-DJ/laptop_store/venv/
+BE/laptop_store/venv/
 
 # Node modules and build output
 FE/laptop-store/node_modules/
