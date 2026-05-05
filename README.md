@@ -6,11 +6,11 @@
 
 ## 🧑‍💻 Thông tin nhóm
 
-| Thành viên         | MSSV         | Vai trò                 |
+| Thành viên           | MSSV         | Vai trò                  |
 | -------------------- | ------------ | ------------------------ |
-| Hoàng Trọng Khôi | DTC235200411 | Trưởng Nhóm `<hr/>` |
-|                      |              |                          |
-|                      |              |                          |
+| Hoàng Trọng Khôi     | DTC235200411 | Trưởng Nhóm `<hr/>`      |
+| Nguyễn Hữu Quỳnh     | DTC235200634 | Thành Viên               |
+| Nông Hồng Thiện      | DTC235200715 | Thành Viên               |
 
 ## 🏗️ Kiến trúc hệ thống
 
