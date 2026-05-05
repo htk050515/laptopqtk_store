@@ -1,0 +1,19 @@
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+db.sqlite3
+
+# Virtual environment
+DJ/laptop_store/venv/
+
+# Node modules and build output
+FE/laptop-store/node_modules/
+FE/laptop-store/dist/
+
+# Claude Code config
+.claude/
