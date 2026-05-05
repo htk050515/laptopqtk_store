@@ -6,73 +6,74 @@ import banner2 from "../../../../assets/Home/banner2.png";
 import banner3 from "../../../../assets/Home/banner3.png";
 
 const Banner = () => {
-    const [currentSlide, setCurrentSlide] = useState(0);
-
-    // Images with correct src import
-    const images = [
+    const [cur, setCur] = useState(0);
+    const slides = [
         { src: banner1, alt: 'Banner 1' },
         { src: banner2, alt: 'Banner 2' },
         { src: banner3, alt: 'Banner 3' },
     ];
 
-    const nextSlide = () => {
-        setCurrentSlide((prev) => (prev + 1) % images.length);
-    };
-
-    const prevSlide = () => {
-        setCurrentSlide((prev) => (prev - 1 + images.length) % images.length);
-    };
-
-    // Auto-advance slides
     useEffect(() => {
-        const slideInterval = setInterval(nextSlide, 5000);
-        return () => clearInterval(slideInterval);
+        const t = setInterval(() => setCur(c => (c + 1) % slides.length), 5000);
+        return () => clearInterval(t);
     }, []);
 
     return (
-        <div className="relative w-full overflow-hidden h-[500px]">
-            {/* Slide Container */}
-            <div className="relative w-full h-full">
-                {images.map((image, index) => (
-                    <div
-                        key={index}
-                        className={`absolute top-0 left-0 w-full h-full transition-opacity duration-1000 ${index === currentSlide ? 'opacity-100' : 'opacity-0'
-                            }`}
-                    >
-                        <img
-                            src={image.src}
-                            alt={image.alt}
-                            className="w-full h-auto object-cover"
-                        />
-                    </div>
-                ))}
-            </div>
-            {/* Navigation Arrows */}
-            <button
-                onClick={prevSlide}
-                className="absolute top-1/2 left-4 z-10 transform -translate-y-1/2 text-white text-xl hover:text-pink-400 rounded-full p-2 transition-all duration-300"
-            >
-                <FontAwesomeIcon icon={faChevronLeft} className="text-white hover:pink-400 text-5xl" />
-            </button>
-            <button
-                onClick={nextSlide}
-                className="absolute top-1/2 right-4 z-10 transform -translate-y-1/2 text-white text-xl hover:text-pink-400 rounded-full p-2 transition-all duration-300"
-            >
-                <FontAwesomeIcon icon={faChevronRight} className="text-white hover:pink-400 text-5xl" />
+        <div style={{
+            position: 'relative',
+            width: '100%',
+            height: 420,
+            overflow: 'hidden',
+            background: '#000',
+        }}>
+            {slides.map((s, i) => (
+                <div key={i} style={{
+                    position: 'absolute', inset: 0,
+                    opacity: i === cur ? 1 : 0,
+                    transition: 'opacity .7s ease',
+                }}>
+                    <img src={s.src} alt={s.alt} style={{
+                        width: '100%', height: '100%',
+                        objectFit: 'cover', objectPosition: 'center',
+                        display: 'block',
+                    }}/>
+                </div>
+            ))}
+
+            {/* Prev */}
+            <button onClick={() => setCur(c => (c - 1 + slides.length) % slides.length)}
+                style={{
+                    position:'absolute', left:16, top:'50%', transform:'translateY(-50%)',
+                    zIndex:10, width:40, height:40, borderRadius:'50%',
+                    background:'rgba(0,0,0,.4)', border:'none', cursor:'pointer',
+                    display:'flex', alignItems:'center', justifyContent:'center', color:'#fff',
+                }}>
+                <FontAwesomeIcon icon={faChevronLeft} style={{fontSize:18}}/>
             </button>
 
+            {/* Next */}
+            <button onClick={() => setCur(c => (c + 1) % slides.length)}
+                style={{
+                    position:'absolute', right:16, top:'50%', transform:'translateY(-50%)',
+                    zIndex:10, width:40, height:40, borderRadius:'50%',
+                    background:'rgba(0,0,0,.4)', border:'none', cursor:'pointer',
+                    display:'flex', alignItems:'center', justifyContent:'center', color:'#fff',
+                }}>
+                <FontAwesomeIcon icon={faChevronRight} style={{fontSize:18}}/>
+            </button>
 
-            {/* Dot Indicators */}
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                {images.map((_, index) => (
-                    <button
-                        key={index}
-                        onClick={() => setCurrentSlide(index)}
-                        className={`w-3 h-3 rounded-full transition-all duration-300 ${index === currentSlide
-                            ? 'bg-white'
-                            : 'bg-white/50 hover:bg-white/75'
-                            }`}
-                    />
+            {/* Dots */}
+            <div style={{
+                position:'absolute', bottom:12, left:'50%', transform:'translateX(-50%)',
+                display:'flex', gap:8, zIndex:10,
+            }}>
+                {slides.map((_, i) => (
+                    <button key={i} onClick={() => setCur(i)} style={{
+                        width: i===cur ? 24 : 10, height:10,
+                        borderRadius: 999, border:'none', cursor:'pointer',
+                        background: i===cur ? '#fff' : 'rgba(255,255,255,.5)',
+                        transition:'all .3s', padding:0,
+                    }}/>
                 ))}
             </div>
         </div>

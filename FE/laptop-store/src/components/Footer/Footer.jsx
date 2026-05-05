@@ -23,12 +23,12 @@ function Footer() {
                         <div className="mt-3 space-y-2 text-sm text-white/90">
                             <div className="flex items-center gap-2">
                                 <FontAwesomeIcon icon={faMapMarkerAlt} className="text-white/80" />
-                                <span>Hà Nội, Việt Nam</span>
+                                <span>Thái Nguyên, Việt Nam</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <FontAwesomeIcon icon={faPhoneVolume} className="text-white/80" />
-                                <a className="hover:text-white transition" href="tel:0123456789">
-                                    0123 456 789
+                                <a className="hover:text-white transition" href="tel:0363425438">
+                                    0363 425 438
                                 </a>
                             </div>
                             <div className="flex items-center gap-2">
@@ -54,7 +54,7 @@ function Footer() {
             </div>
             <div className="border-t border-[#2563eb]/40" />
             <div className="text-white text-center py-4 text-xs sm:text-sm tracking-wide">
-                © 2025 LaptopQTK.vn
+                © 2026 LaptopQTK.vn
             </div>
         </footer>
     );

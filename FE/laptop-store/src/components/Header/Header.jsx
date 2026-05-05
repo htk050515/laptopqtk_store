@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import Logo from '../../assets/Home/logo1.png';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSearch, faUser, faShoppingCart, faSignOutAlt, faEdit, faHistory } from '@fortawesome/free-solid-svg-icons';
+import { faSearch, faUser, faShoppingCart, faSignOutAlt, faEdit, faHistory, faPhone, faMapMarkerAlt, faFileInvoice } from '@fortawesome/free-solid-svg-icons';
 import path from '../../constants/path';
 import useAuthActions from '../../hooks/useAuthActions';
 import { useAuth } from '../../Contexts/AuthContext';
@@ -10,248 +9,296 @@ import userApi from '../../api/UserApi/userApi';
 import productApi from '../../api/AdminApi/ProductApi/productApi';
 import { baseUrl } from '../../constants/config';
 
-function Header() {
-    const [dropdownOpen, setDropdownOpen] = useState(false);
-    const [cartItemCount, setCartItemCount] = useState(0);
+const STORAGE_URL = baseUrl ? `${baseUrl}/storage/` : 'http://localhost:8000/storage/';
+const FALLBACKS = [
+    'https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=80&q=60',
+    'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=80&q=60',
+    'https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?w=80&q=60',
+    'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=80&q=60',
+];
+const TICKERS = [
+    '🔥 Thu cũ giá ngon — Lên đời tiết kiệm',
+    '✅ Sản phẩm Chính hãng — Xuất VAT đầy đủ',
+    '🚚 Giao nhanh — Miễn phí cho đơn 300k',
+    '🎁 Ưu đãi sinh viên giảm thêm 5%',
+];
+const QUICK = ['Laptop gaming', 'MacBook M3', 'Lenovo ThinkPad', 'ASUS ROG', 'Dell XPS'];
+
+const getImg = (p) => {
+    if (!p) return null;
+    if (p.startsWith('https://')) return p;
+    return `${STORAGE_URL}${p.startsWith('/') ? p.substring(1) : p}`;
+};
+const fmt = (p) => new Intl.NumberFormat('vi-VN').format(Math.round(p)) + 'đ';
+
+export default function Header() {
     const { user } = useAuth();
     const { logout } = useAuthActions();
-    const [searchTerm, setSearchTerm] = useState('');
-    const [searchResults, setSearchResults] = useState([]);
-    const [showSearchResults, setShowSearchResults] = useState(false);
-    const [noResults, setNoResults] = useState(false);
-    const searchRef = useRef(null);
     const navigate = useNavigate();
-    const APP_URL = baseUrl;
-    const STORAGE_URL = baseUrl ? `${baseUrl}/storage/` : "http://localhost:8000/storage/";
 
-    // Helper function to get image URL - supports both CDN and local storage
-    const getImageUrl = (imagePath) => {
-        if (!imagePath) return 'https://via.placeholder.com/100?text=No+Image';
-        
-        // If image path is already a full HTTPS URL (CDN), return as is
-        if (imagePath.startsWith('https://')) {
-            return imagePath;
-        }
-        
-        // If image path starts with /storage/, remove it and use STORAGE_URL
-        if (imagePath.startsWith('/storage/')) {
-            return `${STORAGE_URL}${imagePath.substring(9)}`;
-        }
-        
-        // If image path starts with /, it's a relative path from storage
-        if (imagePath.startsWith('/')) {
-            return `${STORAGE_URL}${imagePath.substring(1)}`;
-        }
-        
-        // Otherwise, prepend STORAGE_URL
-        return `${STORAGE_URL}${imagePath}`;
-    };
+    const [cartCount,   setCartCount]   = useState(0);
+    const [dropOpen,    setDropOpen]    = useState(false);
+    const [searchTerm,  setSearchTerm]  = useState('');
+    const [results,     setResults]     = useState([]);
+    const [showResults, setShowResults] = useState(false);
+    const [noResults,   setNoResults]   = useState(false);
+    const [tickerIdx,   setTickerIdx]   = useState(0);
 
-    // Fetch cart data on component mount and whenever the cart might change
-    const fetchCartCount = async () => {
-        try {
-            const access_token = localStorage.getItem("access_token");
-            if (!access_token) return;
-
-            const response = await userApi.getCart(access_token);
-            if (response.data) {
-                setCartItemCount(response.data.length);
-            }
-        } catch (error) {
-            console.error("Failed to fetch cart count:", error);
-        }
-    };
+    const searchRef = useRef(null);
+    const dropRef   = useRef(null);
 
     useEffect(() => {
-        fetchCartCount();
-
-        // Listen for cart update events
-        window.addEventListener('cart-updated', fetchCartCount);
-
-        // Add click event listener to handle clicks outside search dropdown
-        document.addEventListener('mousedown', handleClickOutside);
-
-        return () => {
-            window.removeEventListener('cart-updated', fetchCartCount);
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
+        const t = setInterval(() => setTickerIdx(i => (i + 1) % TICKERS.length), 3000);
+        return () => clearInterval(t);
     }, []);
 
-    const handleClickOutside = (event) => {
-        if (searchRef.current && !searchRef.current.contains(event.target)) {
-            setShowSearchResults(false);
-        }
-    };
-
-    const handleSearch = async () => {
-        if (!searchTerm.trim()) {
-            setShowSearchResults(false);
-            setNoResults(false);
-            return;
-        }
-
+    const fetchCart = async () => {
         try {
-            const response = await productApi.searchProducts({ name: searchTerm });
-            console.log("response", response);
-            if (response.data && response.data.length > 0) {
-                setSearchResults(response.data);
-                setShowSearchResults(true);
-                setNoResults(false);
-            } else {
-                setSearchResults([]);
-                setShowSearchResults(true);
-                setNoResults(true);
-            }
-        } catch (error) {
-            console.error("Search failed:", error);
-            setNoResults(true);
-            setShowSearchResults(true);
-        }
+            const tok = localStorage.getItem('access_token');
+            if (!tok) return;
+            const r = await userApi.getCart(tok);
+            if (r.data) setCartCount(r.data.length);
+        } catch {}
     };
 
-    // Debounce search input
     useEffect(() => {
-        const timer = setTimeout(() => {
-            if (searchTerm) {
-                handleSearch();
-            } else {
-                setShowSearchResults(false);
-            }
-        }, 300);
+        fetchCart();
+        window.addEventListener('cart-updated', fetchCart);
+        const h = (e) => {
+            if (searchRef.current && !searchRef.current.contains(e.target)) setShowResults(false);
+            if (dropRef.current   && !dropRef.current.contains(e.target))   setDropOpen(false);
+        };
+        document.addEventListener('mousedown', h);
+        return () => { window.removeEventListener('cart-updated', fetchCart); document.removeEventListener('mousedown', h); };
+    }, []);
 
-        return () => clearTimeout(timer);
+    useEffect(() => {
+        const t = setTimeout(async () => {
+            if (!searchTerm.trim()) { setShowResults(false); return; }
+            try {
+                const r = await productApi.searchProducts({ name: searchTerm });
+                if (r.data?.length) { setResults(r.data.slice(0,6)); setNoResults(false); }
+                else { setResults([]); setNoResults(true); }
+                setShowResults(true);
+            } catch { setNoResults(true); setShowResults(true); }
+        }, 300);
+        return () => clearTimeout(t);
     }, [searchTerm]);
 
-    const handleProductClick = (productId) => {
-        navigate(`/products/${productId}`);
-        setShowSearchResults(false);
+    const handleSubmit = (e) => {
+        e?.preventDefault();
+        if (!searchTerm.trim()) return;
+        navigate(`/search?q=${encodeURIComponent(searchTerm)}`);
+        setShowResults(false);
         setSearchTerm('');
     };
 
-    const handleSearchSubmit = (e) => {
-        e.preventDefault();
-        if (searchTerm.trim()) {
-            navigate(`/search?q=${encodeURIComponent(searchTerm)}`);
-            setShowSearchResults(false);
-        }
+    /* ── Inline styles để tránh Tailwind conflict ── */
+    const S = {
+        ticker:    { background:'#c62828', padding:'6px 0' },
+        mainBar:   { background:'#2563eb' },
+        row:       { display:'flex', alignItems:'center', gap:16, padding:'12px 0' },
+        logo:      { display:'flex', alignItems:'center', gap:10, textDecoration:'none', flexShrink:0, width:190 },
+        logoBox:   { width:36, height:36, background:'#fff', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 },
+        searchWrap:{ flex:1, position:'relative' },
+        searchForm:{ display:'flex', alignItems:'center', background:'#fff', borderRadius:12, overflow:'hidden', height:44, boxShadow:'0 1px 3px rgba(0,0,0,.15)' },
+        input:     { flex:1, height:'100%', padding:'0 16px', fontSize:14, color:'#374151', outline:'none', border:'none', background:'transparent', minWidth:0 },
+        searchBtn: { height:'100%', width:52, background:'#1d4ed8', display:'flex', alignItems:'center', justifyContent:'center', border:'none', cursor:'pointer', flexShrink:0 },
+        actions:   { display:'flex', alignItems:'center', gap:4, flexShrink:0, width:190, justifyContent:'flex-end' },
+        actionBtn: { display:'flex', flexDirection:'column', alignItems:'center', gap:2, color:'#fff', textDecoration:'none', padding:'4px 10px', cursor:'pointer', background:'none', border:'none' },
+        iconCircle:{ width:32, height:32, background:'rgba(255,255,255,.2)', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', border:'1px solid rgba(255,255,255,.3)' },
+        actionLbl: { fontSize:10, fontWeight:500, color:'#fff', lineHeight:1.2, whiteSpace:'nowrap' },
+        quickRow:  { display:'flex', alignItems:'center', gap:8, paddingBottom:10, overflowX:'auto', scrollbarWidth:'none' },
+        quickBtn:  { flexShrink:0, fontSize:12, color:'rgba(255,255,255,.9)', background:'rgba(255,255,255,.15)', border:'1px solid rgba(255,255,255,.25)', borderRadius:999, padding:'3px 12px', cursor:'pointer', whiteSpace:'nowrap' },
+        dropdown:  { position:'absolute', top:'calc(100% + 6px)', left:0, right:0, background:'#fff', borderRadius:12, boxShadow:'0 8px 30px rgba(0,0,0,.15)', border:'1px solid #f3f4f6', zIndex:50, overflow:'hidden' },
+        dropItem:  { display:'flex', alignItems:'center', gap:12, padding:'10px 16px', cursor:'pointer', borderBottom:'1px solid #f9fafb', transition:'background .15s' },
     };
 
     return (
-        <div className='bg-[#2563eb]'>
-        <div className="container mx-auto py-3 px-2">
-            <div className="flex justify-between items-center">
-                {/* Logo */}
-                <div className="flex gap-x-3 items-center">
-                    <Link to={path.home}>
-                        <h1 className="text-white text-2xl md:text-3xl font-bold cursor-pointer tracking-tight" style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700 }}>
-                            LaptopQTK
-                        </h1>
-                    </Link>
-                </div>
+        <header style={{ position:'sticky', top:0, zIndex:50, boxShadow:'0 2px 8px rgba(0,0,0,.15)' }}>
 
-                {/* Thanh tìm kiếm */}
-                <div className="w-25rem relative" ref={searchRef}>
-                    <form onSubmit={handleSearchSubmit} className="border border-white grid grid-cols-4 px-2 justify-between items-center rounded-md bg-white">
-                        <input
-                            className="text-sm p-1 py-2 outline-none col-span-3 bg-transparent rounded-md"
-                            type="text"
-                            placeholder="Nhập sản phẩm cần tìm"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            onFocus={() => {
-                                if (searchTerm && (searchResults.length > 0 || noResults)) {
-                                    setShowSearchResults(true);
-                                }
-                            }}
-                        />
-                        <button className='col-span-1 justify-end flex' type="submit">
-                            <FontAwesomeIcon className="hover:text-[#ffdfe2] hover:cursor-pointer" icon={faSearch} />
+            {/* Ticker */}
+            <div style={S.ticker}>
+                <div className="container mx-auto px-4" style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:24}}>
+                    <div style={{display:'flex', alignItems:'center', gap:24, overflow:'hidden', flex:1}}>
+                        {TICKERS.map((t,i) => (
+                            <span key={i} style={{
+                                fontSize:12, whiteSpace:'nowrap', color:'#fff',
+                                opacity: i===tickerIdx ? 1 : 0.4,
+                                fontWeight: i===tickerIdx ? 600 : 400,
+                                transition:'opacity .5s'
+                            }}>{t}</span>
+                        ))}
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', gap:16, flexShrink:0}}>
+                        <button style={{fontSize:11, color:'#fff', background:'none', border:'none', cursor:'pointer', display:'flex', alignItems:'center', gap:4, whiteSpace:'nowrap'}}
+                            className="hover:text-yellow-200">
+                            <FontAwesomeIcon icon={faMapMarkerAlt}/> Cửa hàng gần bạn
                         </button>
-                    </form>
-
-                    {/* Search Results Dropdown */}
-                    {showSearchResults && (
-                        <div className="absolute z-50 left-0 right-0 mt-1 bg-white shadow-lg rounded-md max-h-60 overflow-y-auto" style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                            {noResults ? (
-                                <div className="p-3 text-center text-gray-500">Không tìm thấy sản phẩm</div>
-                            ) : (
-                                <div className="max-h-60 overflow-y-auto">
-                                    {searchResults.map((product) => (
-                                        <div
-                                            key={product.id}
-                                            className="p-2 hover:bg-gray-100 cursor-pointer border-b flex items-center"
-                                            onClick={() => handleProductClick(product.id)}
-                                        >
-                                            {product.images && product.images[0] && (
-                                                <img
-                                                    src={getImageUrl(product.images[0].image_path)}
-                                                    alt={product.name}
-                                                    className="w-12 h-12 object-cover mr-3"
-                                                    onError={(e) => {
-                                                        e.target.onerror = null;
-                                                        e.target.src = Logo; // Fallback to logo if image fails to load
-                                                    }}
-                                                />
-                                            )}
-                                            <div className="flex-1 overflow-hidden">
-                                                <div className="font-medium text-sm truncate">{product.name}</div>
-                                                <div className="text-[#fff] text-sm">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.base_price)}</div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                {/* Đăng nhập / Người dùng */}
-                <div className="flex gap-x-5 items-center relative">
-                    {user ? (
-                        <div className="relative">
-                            <button onClick={() => setDropdownOpen(!dropdownOpen)} className="flex items-center gap-x-2 text-[#fff] hover:text-[#ffdfe2] font-semibold">
-                                <FontAwesomeIcon icon={faUser} className="text-lg" />
-                                <span className="hidden md:inline">{user.name}</span>
-                            </button>
-                            {dropdownOpen && (
-                                <div className="absolute right-0 mt-2 w-40 bg-white border rounded-lg shadow-lg z-50">
-                                    <Link to={path.profile} className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-                                        <FontAwesomeIcon icon={faEdit} />
-                                        Sửa thông tin
-                                    </Link>
-                                    <Link to={path.historyOrder} className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-                                        <FontAwesomeIcon icon={faHistory} />
-                                        Lịch sử đặt hàng
-                                    </Link>
-                                    <button onClick={logout} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
-                                        <FontAwesomeIcon icon={faSignOutAlt} />
-                                        Đăng xuất
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <Link to={path.login} className="flex items-center gap-x-2 text-[#fff] hover:text-[#ffdfe2] font-semibold">
-                            <FontAwesomeIcon icon={faUser} className="text-lg" />
-                            <span className="">Đăng nhập</span>
+                        <span style={{color:'rgba(255,255,255,.3)'}}>|</span>
+                        <Link to={path.historyOrder} style={{fontSize:11, color:'#fff', textDecoration:'none', display:'flex', alignItems:'center', gap:4, whiteSpace:'nowrap'}}>
+                            <FontAwesomeIcon icon={faFileInvoice}/> Tra cứu đơn hàng
                         </Link>
-                    )}
-
-                    {/* Giỏ hàng với số lượng */}
-                    <Link to={path.cart} className="flex items-center gap-x-2 text-[#fff] hover:text-[#ffdfe2] font-semibold relative">
-                        <FontAwesomeIcon icon={faShoppingCart} className="text-lg" />
-                        <span className="hidden md:inline">Giỏ hàng</span>
-                        {cartItemCount > 0 && (
-                            <span className="absolute -top-2 -right-2 bg-white text-[#2563eb] text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                                {cartItemCount}
-                            </span>
-                        )}
-                    </Link>
+                        <span style={{color:'rgba(255,255,255,.3)'}}>|</span>
+                        <a href="tel:18000515" style={{fontSize:11, color:'#fff', textDecoration:'none', fontWeight:700, display:'flex', alignItems:'center', gap:4, whiteSpace:'nowrap'}}>
+                            <FontAwesomeIcon icon={faPhone}/> 1800 0515
+                        </a>
+                    </div>
                 </div>
             </div>
-        </div>
-        </div>
+
+            {/* Main */}
+            <div style={S.mainBar}>
+                <div className="container mx-auto px-4">
+                    <div style={S.row}>
+
+                        {/* Logo */}
+                        <Link to={path.home} style={S.logo}>
+                            <div style={S.logoBox}>
+                                <span style={{color:'#2563eb', fontWeight:900, fontSize:20, lineHeight:1}}>Q</span>
+                            </div>
+                            <div>
+                                <div style={{color:'#fff', fontWeight:900, fontSize:20, lineHeight:1.2, fontFamily:"'Poppins',sans-serif"}}>
+                                    Laptop<span style={{color:'#fde047'}}>QTK</span>
+                                </div>
+                                <div style={{color:'#bfdbfe', fontSize:10, lineHeight:1.3}}>Chính hãng · Uy tín</div>
+                            </div>
+                        </Link>
+
+                        {/* Search */}
+                        <div style={S.searchWrap} ref={searchRef}>
+                            <form onSubmit={handleSubmit} style={S.searchForm}>
+                                <input
+                                    type="text"
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    onFocus={() => searchTerm && setShowResults(true)}
+                                    placeholder="Bạn muốn mua gì hôm nay?"
+                                    style={S.input}
+                                />
+                                <button type="submit" style={S.searchBtn}>
+                                    <FontAwesomeIcon icon={faSearch} style={{color:'#fff', fontSize:15}}/>
+                                </button>
+                            </form>
+
+                            {showResults && (
+                                <div style={S.dropdown}>
+                                    {noResults ? (
+                                        <div style={{padding:'20px 16px', textAlign:'center', fontSize:14, color:'#9ca3af'}}>
+                                            Không tìm thấy "<b style={{color:'#374151'}}>{searchTerm}</b>"
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div style={{padding:'8px 16px', borderBottom:'1px solid #f3f4f6', display:'flex', justifyContent:'space-between'}}>
+                                                <span style={{fontSize:12, color:'#9ca3af'}}>Kết quả tìm kiếm</span>
+                                                <span style={{fontSize:12, color:'#2563eb', fontWeight:500}}>{results.length} sản phẩm</span>
+                                            </div>
+                                            {results.map((p,i) => {
+                                                const imgPath = p.images?.[0]?.image_path;
+                                                const imgSrc  = imgPath ? getImg(imgPath) : FALLBACKS[i%FALLBACKS.length];
+                                                const v       = p.variations?.[0];
+                                                const price   = v?.discount_price || v?.price || p.base_price;
+                                                return (
+                                                    <div key={p.id} style={S.dropItem}
+                                                        onClick={() => { navigate(`/products/${p.id}`); setShowResults(false); setSearchTerm(''); }}
+                                                        onMouseEnter={e=>e.currentTarget.style.background='#eff6ff'}
+                                                        onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
+                                                        <img src={imgSrc} alt={p.name} style={{width:44,height:44,objectFit:'cover',borderRadius:8,background:'#f3f4f6',flexShrink:0}}
+                                                            onError={e=>{e.target.src=FALLBACKS[i%FALLBACKS.length];}}/>
+                                                        <div style={{flex:1, minWidth:0}}>
+                                                            <p style={{fontSize:13,fontWeight:500,color:'#1f2937',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</p>
+                                                            <p style={{fontSize:12,fontWeight:700,color:'#2563eb',marginTop:2}}>{fmt(parseFloat(price))}</p>
+                                                        </div>
+                                                        <svg width="16" height="16" fill="none" stroke="#d1d5db" viewBox="0 0 24 24" style={{flexShrink:0}}>
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
+                                                        </svg>
+                                                    </div>
+                                                );
+                                            })}
+                                            <div style={{padding:'10px 16px', background:'#f9fafb', textAlign:'center', borderTop:'1px solid #f3f4f6'}}>
+                                                <button onClick={handleSubmit} style={{fontSize:12,color:'#2563eb',fontWeight:600,background:'none',border:'none',cursor:'pointer'}}>
+                                                    Xem tất cả kết quả cho "{searchTerm}" →
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Actions */}
+                        <div style={S.actions}>
+                            {/* User */}
+                            <div style={{position:'relative'}} ref={dropRef}>
+                                {user ? (
+                                    <>
+                                        <button onClick={() => setDropOpen(!dropOpen)} style={S.actionBtn}>
+                                            <div style={S.iconCircle}><FontAwesomeIcon icon={faUser} style={{fontSize:13,color:'#fff'}}/></div>
+                                            <span style={{...S.actionLbl, maxWidth:68, overflow:'hidden', textOverflow:'ellipsis'}}>{user.name}</span>
+                                        </button>
+                                        {dropOpen && (
+                                            <div style={{position:'absolute',right:0,top:'calc(100% + 8px)',width:208,background:'#fff',borderRadius:12,boxShadow:'0 8px 30px rgba(0,0,0,.15)',border:'1px solid #f3f4f6',zIndex:50,overflow:'hidden'}}>
+                                                <div style={{padding:'12px 16px',background:'#eff6ff',borderBottom:'1px solid #f3f4f6'}}>
+                                                    <p style={{fontWeight:600,fontSize:14,color:'#1f2937',overflow:'hidden',textOverflow:'ellipsis'}}>{user.name}</p>
+                                                    <p style={{fontSize:12,color:'#6b7280',overflow:'hidden',textOverflow:'ellipsis'}}>{user.email}</p>
+                                                </div>
+                                                {[
+                                                    {to:path.profile,    icon:faEdit,      label:'Sửa thông tin'},
+                                                    {to:path.historyOrder,icon:faHistory,  label:'Lịch sử đặt hàng'},
+                                                ].map(item => (
+                                                    <Link key={item.to} to={item.to} onClick={() => setDropOpen(false)}
+                                                        style={{display:'flex',alignItems:'center',gap:10,padding:'10px 16px',fontSize:14,color:'#374151',textDecoration:'none'}}
+                                                        onMouseEnter={e=>e.currentTarget.style.background='#f9fafb'}
+                                                        onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
+                                                        <FontAwesomeIcon icon={item.icon} style={{color:'#2563eb',width:16}}/> {item.label}
+                                                    </Link>
+                                                ))}
+                                                <div style={{borderTop:'1px solid #f3f4f6'}}>
+                                                    <button onClick={() => { logout(); setDropOpen(false); }}
+                                                        style={{width:'100%',textAlign:'left',display:'flex',alignItems:'center',gap:10,padding:'10px 16px',fontSize:14,color:'#ef4444',background:'none',border:'none',cursor:'pointer'}}
+                                                        onMouseEnter={e=>e.currentTarget.style.background='#fef2f2'}
+                                                        onMouseLeave={e=>e.currentTarget.style.background='none'}>
+                                                        <FontAwesomeIcon icon={faSignOutAlt} style={{width:16}}/> Đăng xuất
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <Link to={path.login} style={S.actionBtn}>
+                                        <div style={S.iconCircle}><FontAwesomeIcon icon={faUser} style={{fontSize:13,color:'#fff'}}/></div>
+                                        <span style={S.actionLbl}>Đăng nhập</span>
+                                    </Link>
+                                )}
+                            </div>
+
+                            {/* Cart */}
+                            <Link to={path.cart} style={{...S.actionBtn, position:'relative', textDecoration:'none'}}>
+                                <div style={{...S.iconCircle, position:'relative'}}>
+                                    <FontAwesomeIcon icon={faShoppingCart} style={{fontSize:13,color:'#fff'}}/>
+                                    {cartCount > 0 && (
+                                        <span style={{position:'absolute',top:-6,right:-6,background:'#c62828',color:'#fff',fontSize:9,fontWeight:900,borderRadius:999,minWidth:16,height:16,display:'flex',alignItems:'center',justifyContent:'center',padding:'0 3px',boxShadow:'0 1px 3px rgba(0,0,0,.3)'}}>
+                                            {cartCount > 99 ? '99+' : cartCount}
+                                        </span>
+                                    )}
+                                </div>
+                                <span style={S.actionLbl}>Giỏ hàng</span>
+                            </Link>
+                        </div>
+                    </div>
+
+                    {/* Quick tags */}
+                    <div style={S.quickRow}>
+                        <span style={{fontSize:12,color:'#bfdbfe',flexShrink:0,fontWeight:500}}>Tìm nhanh:</span>
+                        {QUICK.map((q,i) => (
+                            <button key={i} style={S.quickBtn}
+                                onClick={() => navigate(`/search?q=${encodeURIComponent(q)}`)}>
+                                {q}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </header>
     );
 }
-
-export default Header;
