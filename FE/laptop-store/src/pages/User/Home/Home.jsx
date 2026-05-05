@@ -1,5 +1,3 @@
-
-
 // Home.jsx
 import React, { useState, useEffect } from "react";
 import Header from "../../../components/Header/Header";
@@ -9,6 +7,7 @@ import BannerProducts from "./BannerProducts/BannerProducts";
 import ListProduct from "./ListProduct.jsx/ListProduct";
 import ServiceShop from "./ServiceShop/ServiceShop";
 import ComboTeddy from "./ComboTeddy/ComboTeddy";
+import FeaturedProducts from "./FeaturedProducts/FeaturedProducts";
 import Footer from "../../../components/Footer/Footer";
 import BackToTopButton from "../../../components/BackToTopButton/BackToTopButton";
 import categoryApi from "../../../api/AdminApi/CategoryApi/categoryApi";
@@ -17,8 +16,10 @@ import productApi from "../../../api/AdminApi/ProductApi/productApi";
 function Home() {
     const [categories, setCategories] = useState([]);
     const [productsByCategory, setProductsByCategory] = useState({});
+    const [featuredProducts, setFeaturedProducts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState("");
+
     const techStories = [
         {
             id: "ultrabook-2025",
@@ -30,21 +31,21 @@ function Home() {
         {
             id: "gaming-laptop",
             title: "Laptop gaming hiệu năng cao RTX 40 Series",
-            summary: "Card đồ họa RTX 4070/4080, màn hình 165Hz, hệ thống tản nhiệt tiên tiến cho trải nghiệm chơi game mượt mà ở mọi tựa game.",
+            summary: "Card đồ họa RTX 4070/4080, màn hình 165Hz, hệ thống tản nhiệt tiên tiến cho trải nghiệm chơi game mượt mà.",
             imageUrl: "https://images.unsplash.com/photo-1603302576837-37561b2e2302?auto=format&fit=crop&w=640&q=80",
             alt: "Gaming laptop with RGB keyboard",
         },
         {
             id: "workstation",
             title: "Laptop workstation cho đồ họa & lập trình",
-            summary: "CPU đa nhân mạnh mẽ, RAM 32GB+, màn hình chuẩn màu 100% sRGB phục vụ thiết kế, dựng video và phát triển phần mềm chuyên nghiệp.",
+            summary: "CPU đa nhân mạnh mẽ, RAM 32GB+, màn hình chuẩn màu 100% sRGB phục vụ thiết kế và phát triển phần mềm.",
             imageUrl: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=640&q=80",
             alt: "Workstation laptop for design and coding",
         },
         {
             id: "accessories",
             title: "Linh kiện & phụ kiện nâng cấp laptop",
-            summary: "RAM, SSD, bàn phím cơ, chuột gaming, đế tản nhiệt và các phụ kiện giúp nâng cấp hiệu năng và trải nghiệm sử dụng laptop.",
+            summary: "RAM, SSD, bàn phím cơ, chuột gaming, đế tản nhiệt và các phụ kiện giúp nâng cấp hiệu năng laptop.",
             imageUrl: "https://images.unsplash.com/photo-1625842268584-8f3296236761?auto=format&fit=crop&w=640&q=80",
             alt: "Laptop accessories and components",
         },
@@ -52,45 +53,42 @@ function Home() {
 
     useEffect(() => {
         fetchCategories();
+        fetchFeatured();
     }, []);
 
     useEffect(() => {
-        if (categories.length > 0) {
-            fetchAllProductsByCategory();
-        }
+        if (categories.length > 0) fetchAllProductsByCategory();
     }, [categories]);
 
     const fetchCategories = async () => {
         try {
-            const response = await categoryApi.getListCategories();
-            console.log("📢 Fetched Categories:", response);
-
-            if (response.status === 200 && Array.isArray(response.data)) {
-                setCategories(response.data);
-            }
-        } catch (error) {
-            console.error("❌ Lỗi tải danh mục:", error);
+            const res = await categoryApi.getListCategories();
+            if (res.status === 200 && Array.isArray(res.data)) setCategories(res.data);
+        } catch {
             setErrorMessage("Không thể tải danh mục sản phẩm");
+        }
+    };
+
+    const fetchFeatured = async () => {
+        try {
+            const res = await productApi.getListProducts();
+            if (res.status === 200 && Array.isArray(res.data))
+                setFeaturedProducts(res.data.filter(p => p.featured));
+        } catch {
+            console.error("Lỗi tải sản phẩm nổi bật");
         }
     };
 
     const fetchAllProductsByCategory = async () => {
         setIsLoading(true);
-        const productMap = {};
-
+        const map = {};
         try {
-            // Fetch products for each category
-            for (const category of categories) {
-                const response = await productApi.searchProducts({ category_id: category.id });
-
-                if (response.status === 200 && Array.isArray(response.data)) {
-                    productMap[category.id] = response.data;
-                }
+            for (const cat of categories) {
+                const res = await productApi.searchProducts({ category_id: cat.id });
+                if (res.status === 200 && Array.isArray(res.data)) map[cat.id] = res.data;
             }
-
-            setProductsByCategory(productMap);
-        } catch (error) {
-            console.error("❌ Lỗi tải sản phẩm:", error);
+            setProductsByCategory(map);
+        } catch {
             setErrorMessage("Không thể tải sản phẩm");
         } finally {
             setIsLoading(false);
@@ -101,18 +99,34 @@ function Home() {
         <>
             <Header />
             <Navbar />
+
+            {/* 1. BANNER CHÍNH */}
             <Banner />
+
+            {/* 2. LỌC THƯƠNG HIỆU + ƯU ĐÃI — đẩy lên đầu */}
+            <BannerProducts />
+
+            {/* 3. SẢN PHẨM NỔI BẬT */}
+            <FeaturedProducts products={featuredProducts} isLoading={isLoading} />
+
+            {/* 4. DANH SÁCH SẢN PHẨM THEO DANH MỤC */}
             <ListProduct
                 categories={categories}
                 productsByCategory={productsByCategory}
                 isLoading={isLoading}
                 errorMessage={errorMessage}
             />
+
+            {/* 5. DỊCH VỤ */}
             <ServiceShop />
-            <BannerProducts />
+
+            {/* 6. TIN CÔNG NGHỆ */}
             <section id="tech-stories">
                 <div className="container mx-auto mt-10">
-                    <div className="text-center text-2xl font-black text-[#2563eb]">Tin công nghệ nổi bật</div>
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-1.5 h-8 bg-[#2563eb] rounded-full"></div>
+                        <div className="text-2xl font-black text-[#2563eb]">Tin công nghệ nổi bật</div>
+                    </div>
                     <div className="border-b-2 border-[#2563eb] my-5"></div>
                     <div className="mt-3 grid grid-cols-2 gap-6">
                         {techStories.map((story) => (
@@ -122,10 +136,9 @@ function Home() {
                                     src={story.imageUrl}
                                     alt={story.alt}
                                     loading="lazy"
-                                    decoding="async"
                                 />
                                 <div className="col-span-4 text-sm">
-                                    <h3 className="uppercase font-semibold tracking-wide hover:text-[#2563eb]">
+                                    <h3 className="uppercase font-semibold tracking-wide hover:text-[#2563eb] cursor-pointer">
                                         {story.title}
                                     </h3>
                                     <p className="mt-2 text-[#555] line-clamp-3">{story.summary}</p>
@@ -134,18 +147,19 @@ function Home() {
                         ))}
                     </div>
                     <div className="mt-8 flex justify-center">
-                        <button className="uppercase flex items-center text-sm font-bold px-8 py-2 bg-[#2563eb] rounded-lg text-white transition-colors duration-300 hover:bg-[#1d4ed8] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#2563eb]">
-                            <span>Xem thêm</span>
+                        <button className="uppercase flex items-center text-sm font-bold px-8 py-2 bg-[#2563eb] rounded-lg text-white hover:bg-[#1d4ed8] transition-colors">
+                            Xem thêm
                         </button>
                     </div>
                 </div>
             </section>
-            <section id="combo-dien-thoai">
+
+            {/* 7. COMBO */}
+            <section id="combo">
                 <ComboTeddy />
             </section>
 
             <ServiceShop />
-
             <Footer />
             <BackToTopButton />
         </>
