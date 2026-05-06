@@ -8,12 +8,26 @@ __pycache__/
 *.pyd
 db.sqlite3
 
+# Django media / upload (QUAN TRỌNG)
+media/
+storage/
+
 # Virtual environment
+venv/
 BE/laptop_store/venv/
 
 # Node modules and build output
+node_modules/
 FE/laptop-store/node_modules/
 FE/laptop-store/dist/
+build/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
 
 # Claude Code config
 .claude/

@@ -1,176 +1,221 @@
-import { useState, useRef, useEffect } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCommentDots, faTimes, faPaperPlane } from '@fortawesome/free-solid-svg-icons';
-import { http } from '../../constants/config';
+// src/components/ChatWidget/ChatWidget.jsx
+// Chatbot AI tư vấn có product cards, conversation history
+import { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
+import { baseUrl } from '../../constants/config';
+import { useNavigate } from 'react-router-dom';
 
-const ChatWidget = () => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [messages, setMessages] = useState([
-        { role: 'bot', content: 'Xin chào! Mình là trợ lý mua hàng của LaptopQTK. Bạn cần tư vấn gì ạ? 😊' }
+const BASE_STORAGE = baseUrl ? `${baseUrl}/storage/` : 'http://localhost:8000/storage/';
+
+const vnd = (p) => new Intl.NumberFormat('vi-VN').format(Math.round(p)) + 'đ';
+
+const getImg = (path) => {
+    if (!path) return 'https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=80&q=60';
+    if (path.startsWith('https://')) return path;
+    return `${BASE_STORAGE}${path.replace(/^\//, '')}`;
+};
+
+const QUICK_QUESTIONS = [
+    'Laptop gaming dưới 20 triệu',
+    'MacBook phù hợp sinh viên',
+    'Laptop văn phòng pin trâu',
+    'So sánh RAM 16GB vs 32GB',
+];
+
+export default function ChatWidget() {
+    const navigate = useNavigate();
+    const [open,    setOpen]    = useState(false);
+    const [msgs,    setMsgs]    = useState([
+        { role: 'assistant', content: 'Xin chào! Mình là trợ lý LaptopQTK 👋 Bạn cần tư vấn laptop hay linh kiện gì?' }
     ]);
-    const [input, setInput] = useState('');
+    const [input,   setInput]   = useState('');
     const [loading, setLoading] = useState(false);
-    const messagesEndRef = useRef(null);
-    const inputRef = useRef(null);
-
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
+    const bottomRef = useRef(null);
+    const inputRef  = useRef(null);
 
     useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [msgs, open]);
 
     useEffect(() => {
-        if (isOpen && inputRef.current) {
-            inputRef.current.focus();
-        }
-    }, [isOpen]);
+        if (open) setTimeout(() => inputRef.current?.focus(), 150);
+    }, [open]);
 
-    const sendMessage = async () => {
-        const text = input.trim();
-        if (!text || loading) return;
-
-        setMessages(prev => [...prev, { role: 'user', content: text }]);
+    const send = async (text) => {
+        const msg = (text || input).trim();
+        if (!msg || loading) return;
         setInput('');
+
+        const newMsgs = [...msgs, { role: 'user', content: msg }];
+        setMsgs(newMsgs);
         setLoading(true);
 
         try {
-            const res = await http.post('chatbot/message', { message: text });
-            const { reply, suggested_products } = res.data;
-            setMessages(prev => [...prev, {
-                role: 'bot',
-                content: reply,
-                products: suggested_products || [],
-            }]);
+            // Build history (exclude first greeting)
+            const history = newMsgs.slice(1, -1).map(m => ({ role: m.role, content: m.content }));
+            const res = await axios.post(`${baseUrl}/api/chatbot/message`, {
+                message: msg,
+                history,
+            });
+            const { reply, products } = res.data;
+            setMsgs(prev => [...prev, { role: 'assistant', content: reply, products }]);
         } catch {
-            setMessages(prev => [...prev, {
-                role: 'bot',
-                content: 'Xin lỗi, có lỗi xảy ra. Bạn vui lòng thử lại sau nhé!',
+            setMsgs(prev => [...prev, {
+                role: 'assistant',
+                content: 'Xin lỗi, hệ thống đang bận. Vui lòng thử lại sau!'
             }]);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleKeyDown = (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    };
-
-    const formatPrice = (price) => {
-        return parseInt(price).toLocaleString('vi-VN') + 'đ';
-    };
-
     return (
         <>
-            {/* Chat toggle button */}
-            {!isOpen && (
-                <button
-                    onClick={() => setIsOpen(true)}
-                    className="fixed bottom-20 right-5 z-50 w-14 h-14 rounded-full bg-[#2563eb] text-white shadow-lg hover:bg-[#1d4ed8] transition-all duration-300 flex items-center justify-center hover:scale-110"
-                    title="Chat tư vấn"
-                >
-                    <FontAwesomeIcon icon={faCommentDots} className="text-xl" />
-                </button>
-            )}
+            {/* Floating button */}
+            <button
+                onClick={() => setOpen(!open)}
+                style={{
+                    position:'fixed', bottom:24, right:24, zIndex:1000,
+                    width:54, height:54, borderRadius:'50%',
+                    background: open ? '#374151' : '#2563eb',
+                    border:'none', cursor:'pointer', boxShadow:'0 4px 16px rgba(0,0,0,.25)',
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                    transition:'all .2s',
+                }}>
+                {open ? (
+                    <svg width="20" height="20" fill="none" stroke="#fff" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                ) : (
+                    <svg width="22" height="22" fill="none" stroke="#fff" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                    </svg>
+                )}
+                {!open && msgs.filter(m=>m.role==='assistant').length > 1 && (
+                    <span style={{ position:'absolute', top:-3, right:-3, width:10, height:10, background:'#ef4444', borderRadius:'50%', border:'2px solid #fff' }}/>
+                )}
+            </button>
 
-            {/* Chat panel */}
-            {isOpen && (
-                <div className="fixed bottom-20 right-5 z-50 w-[360px] h-[500px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
+            {/* Chat window */}
+            {open && (
+                <div style={{
+                    position:'fixed', bottom:90, right:24, zIndex:1000,
+                    width:360, height:520,
+                    background:'#fff', borderRadius:18,
+                    boxShadow:'0 8px 40px rgba(0,0,0,.2)',
+                    display:'flex', flexDirection:'column', overflow:'hidden',
+                    fontFamily:"'Inter','Segoe UI',sans-serif",
+                }}>
                     {/* Header */}
-                    <div className="bg-[#2563eb] text-white px-4 py-3 flex items-center justify-between flex-shrink-0">
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                                <FontAwesomeIcon icon={faCommentDots} className="text-sm" />
-                            </div>
-                            <div>
-                                <div className="font-semibold text-sm">Trợ lý LaptopQTK</div>
-                                <div className="text-xs text-blue-100">Luôn sẵn sàng tư vấn</div>
-                            </div>
+                    <div style={{ background:'linear-gradient(135deg,#1e40af,#2563eb)', padding:'14px 16px', display:'flex', alignItems:'center', gap:10 }}>
+                        <div style={{ width:36, height:36, background:'rgba(255,255,255,.2)', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                            <svg width="18" height="18" fill="none" stroke="#fff" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                    d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
                         </div>
-                        <button
-                            onClick={() => setIsOpen(false)}
-                            className="w-8 h-8 rounded-full hover:bg-white/20 flex items-center justify-center transition"
-                        >
-                            <FontAwesomeIcon icon={faTimes} />
-                        </button>
+                        <div>
+                            <div style={{ color:'#fff', fontWeight:700, fontSize:14, lineHeight:1.3 }}>Trợ lý LaptopQTK</div>
+                            <div style={{ color:'rgba(255,255,255,.75)', fontSize:11 }}>Luôn sẵn sàng tư vấn</div>
+                        </div>
+                        <div style={{ marginLeft:'auto', width:8, height:8, background:'#4ade80', borderRadius:'50%', boxShadow:'0 0 0 2px rgba(74,222,128,.3)' }}/>
                     </div>
 
                     {/* Messages */}
-                    <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50">
-                        {messages.map((msg, idx) => (
-                            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
-                                    msg.role === 'user'
-                                        ? 'bg-[#2563eb] text-white rounded-br-sm'
-                                        : 'bg-white text-gray-800 shadow-sm border border-gray-100 rounded-bl-sm'
-                                }`}>
-                                    <div className="whitespace-pre-wrap">{msg.content}</div>
-
-                                    {/* Product cards */}
-                                    {msg.products && msg.products.length > 0 && (
-                                        <div className="mt-2 space-y-1.5 border-t border-gray-100 pt-2">
-                                            {msg.products.slice(0, 3).map((p) => (
-                                                <a
-                                                    key={p.id}
-                                                    href={`/product/${p.slug}`}
-                                                    className="block bg-blue-50 rounded-lg px-2 py-1.5 hover:bg-blue-100 transition text-xs"
-                                                >
-                                                    <div className="font-medium text-gray-800 truncate">{p.name}</div>
-                                                    <div className="text-[#2563eb] font-semibold">{formatPrice(p.base_price)}</div>
-                                                </a>
-                                            ))}
-                                        </div>
-                                    )}
+                    <div style={{ flex:1, overflowY:'auto', padding:'12px 14px', display:'flex', flexDirection:'column', gap:10, background:'#f9fafb' }}>
+                        {msgs.map((m, i) => (
+                            <div key={i} style={{ display:'flex', flexDirection:'column', alignItems: m.role==='user' ? 'flex-end' : 'flex-start', gap:4 }}>
+                                <div style={{
+                                    maxWidth:'82%', padding:'9px 13px', borderRadius: m.role==='user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                                    background: m.role==='user' ? '#2563eb' : '#fff',
+                                    color: m.role==='user' ? '#fff' : '#111827',
+                                    fontSize:13, lineHeight:1.55,
+                                    boxShadow: m.role==='user' ? 'none' : '0 1px 3px rgba(0,0,0,.08)',
+                                    whiteSpace:'pre-wrap',
+                                }}>
+                                    {m.content}
                                 </div>
+
+                                {/* Product cards */}
+                                {m.products?.length > 0 && (
+                                    <div style={{ width:'100%', display:'flex', flexDirection:'column', gap:6, marginTop:4 }}>
+                                        {m.products.map(p => (
+                                            <div key={p.id}
+                                                onClick={() => navigate(`/products/${p.id}`)}
+                                                style={{ display:'flex', alignItems:'center', gap:10, background:'#fff', borderRadius:10, padding:'8px 10px', cursor:'pointer', border:'1px solid #e5e7eb', boxShadow:'0 1px 3px rgba(0,0,0,.06)', transition:'box-shadow .15s' }}
+                                                onMouseEnter={e => e.currentTarget.style.boxShadow='0 3px 10px rgba(0,0,0,.12)'}
+                                                onMouseLeave={e => e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,.06)'}>
+                                                <img src={getImg(p.img)} alt={p.name}
+                                                    style={{ width:44, height:44, objectFit:'cover', borderRadius:8, flexShrink:0, background:'#f3f4f6' }}
+                                                    onError={e => { e.target.src='https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=80&q=60'; }}/>
+                                                <div style={{ flex:1, minWidth:0 }}>
+                                                    <p style={{ fontSize:12, fontWeight:600, color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', margin:0 }}>{p.name}</p>
+                                                    <p style={{ fontSize:12, fontWeight:700, color:'#2563eb', margin:'2px 0 0' }}>{vnd(p.price)}</p>
+                                                </div>
+                                                <svg width="14" height="14" fill="none" stroke="#9ca3af" viewBox="0 0 24 24" style={{ flexShrink:0 }}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
+                                                </svg>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         ))}
 
-                        {/* Typing indicator */}
+                        {/* Loading */}
                         {loading && (
-                            <div className="flex justify-start">
-                                <div className="bg-white text-gray-500 rounded-2xl rounded-bl-sm px-4 py-2 shadow-sm border border-gray-100">
-                                    <div className="flex space-x-1">
-                                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                                    </div>
+                            <div style={{ display:'flex', alignItems:'flex-start' }}>
+                                <div style={{ background:'#fff', borderRadius:'14px 14px 14px 4px', padding:'10px 14px', boxShadow:'0 1px 3px rgba(0,0,0,.08)', display:'flex', gap:4 }}>
+                                    {[0,1,2].map(i => (
+                                        <div key={i} style={{ width:7, height:7, background:'#9ca3af', borderRadius:'50%', animation:`bounce 1.2s ease-in-out ${i*0.2}s infinite` }}/>
+                                    ))}
                                 </div>
                             </div>
                         )}
-                        <div ref={messagesEndRef} />
+                        <div ref={bottomRef}/>
                     </div>
 
-                    {/* Input */}
-                    <div className="p-3 border-t border-gray-200 bg-white flex-shrink-0">
-                        <div className="flex items-center gap-2">
-                            <input
-                                ref={inputRef}
-                                type="text"
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder="Nhập câu hỏi..."
-                                className="flex-1 border border-gray-300 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb]"
-                                disabled={loading}
-                                maxLength={500}
-                            />
-                            <button
-                                onClick={sendMessage}
-                                disabled={loading || !input.trim()}
-                                className="w-9 h-9 rounded-full bg-[#2563eb] text-white flex items-center justify-center hover:bg-[#1d4ed8] transition disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                            >
-                                <FontAwesomeIcon icon={faPaperPlane} className="text-sm" />
-                            </button>
+                    {/* Quick questions — chỉ hiện khi chưa có cuộc trò chuyện */}
+                    {msgs.length <= 1 && (
+                        <div style={{ padding:'8px 12px', borderTop:'1px solid #e5e7eb', display:'flex', gap:6, flexWrap:'wrap', background:'#fff' }}>
+                            {QUICK_QUESTIONS.map((q, i) => (
+                                <button key={i} onClick={() => send(q)}
+                                    style={{ fontSize:11, color:'#2563eb', background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:999, padding:'3px 10px', cursor:'pointer', whiteSpace:'nowrap', fontFamily:'inherit' }}>
+                                    {q}
+                                </button>
+                            ))}
                         </div>
+                    )}
+
+                    {/* Input */}
+                    <div style={{ padding:'10px 12px', borderTop:'1px solid #e5e7eb', display:'flex', gap:8, background:'#fff' }}>
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={input}
+                            onChange={e => setInput(e.target.value)}
+                            onKeyDown={e => e.key==='Enter' && !e.shiftKey && send()}
+                            placeholder="Nhập câu hỏi..."
+                            style={{ flex:1, border:'1px solid #e5e7eb', borderRadius:10, padding:'8px 12px', fontSize:13, outline:'none', fontFamily:'inherit', minWidth:0 }}
+                        />
+                        <button onClick={() => send()}
+                            disabled={!input.trim() || loading}
+                            style={{ width:36, height:36, borderRadius:10, background: input.trim() && !loading ? '#2563eb' : '#e5e7eb', border:'none', cursor: input.trim() && !loading ? 'pointer' : 'not-allowed', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'background .15s' }}>
+                            <svg width="16" height="16" fill="none" stroke="#fff" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                            </svg>
+                        </button>
                     </div>
                 </div>
             )}
+
+            <style>{`
+                @keyframes bounce {
+                    0%, 80%, 100% { transform: translateY(0); }
+                    40% { transform: translateY(-6px); }
+                }
+            `}</style>
         </>
     );
-};
-
-export default ChatWidget;
+}

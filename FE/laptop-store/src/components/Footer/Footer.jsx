@@ -54,7 +54,7 @@ function Footer() {
             </div>
             <div className="border-t border-[#2563eb]/40" />
             <div className="text-white text-center py-4 text-xs sm:text-sm tracking-wide">
-                © 2026 LaptopQTK.vn
+                © 2026 LaptopQTK
             </div>
         </footer>
     );

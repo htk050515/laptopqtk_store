@@ -5,7 +5,7 @@ import { faMapMarkerAlt } from '@fortawesome/free-solid-svg-icons';
 
 const StoreLocations = () => {
     const storeLocations = [
-        { address: 'Hào Nam, Đống Đa, Hà Nội', phone: '093.828.6616' },
+        { address: 'ICTU, Thái Nguyên', phone: '093.828.6616' },
     ];
 
     const contacts = [
@@ -16,7 +16,7 @@ const StoreLocations = () => {
 
     return (
         <>
-            <div className='text-[#2563eb] font-bold mt-3 text-lg'>Hà Nội | 8:30 - 23:00</div>
+            <div className='text-[#2563eb] font-bold mt-3 text-lg'>Thái Nguyên | 8:30 - 23:00</div>
             {storeLocations.map((store, i) => (
                 <div key={i} className="mt-2 flex items-start gap-1">
                     <FontAwesomeIcon icon={faMapMarkerAlt} className="text-sm text-[#777] flex-shrink-0" />

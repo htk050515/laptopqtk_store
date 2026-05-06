@@ -6,7 +6,6 @@ import { faCheck } from '@fortawesome/free-solid-svg-icons';
 
 const ProductFeatures = () => {
     const features = [
-        'Giao hàng nội thành Hà Nội trong 2 giờ',
         'Bảo hành chính hãng 24 tháng',
         'Hỗ trợ cài đặt phần mềm miễn phí',
         'Đổi trả trong 7 ngày nếu lỗi',

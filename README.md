@@ -9,8 +9,8 @@
 | Thành viên         | MSSV         | Vai trò                 |
 | -------------------- | ------------ | ------------------------ |
 | Hoàng Trọng Khôi | DTC235200411 | Trưởng Nhóm `<hr/>` |
-|                      |              |                          |
-|                      |              |                          |
+| Nguyễn Hữu Quỳnh  | DTC235200634 | Thành viên             |
+| Nông Hồng Thiện   | DTC235200715 | Thành viên             |
 
 ## 🏗️ Kiến trúc hệ thống
 
@@ -245,11 +245,11 @@ ecommerce_laptop_store/
 
 | Vai trò | Email           | Mật khẩu |
 | -------- | --------------- | ---------- |
-| Admin    | admin@gmail.com | Admin@123  |
+| Admin    | admin@gmail.com | 12345678   |
 
 ---
 
 ## 📞 Liên hệ
 
-- Email: contact@laptopqtk.vn
+- Email: dtc235200411@ictu.edu.vn
 - Website: http://localhost:3000

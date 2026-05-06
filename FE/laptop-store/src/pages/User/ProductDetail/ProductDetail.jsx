@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShoppingCart } from '@fortawesome/free-solid-svg-icons';
 import Swal from 'sweetalert2'; // Import SweetAlert
-
+import SpecsPanel from './SpecsPanel';
 import Header from '../../../components/Header/Header';
 import Navbar from '../../../components/Navbar/Navbar';
 import QuantitySelector from './QualitySelctor/QualitySelector';
@@ -323,6 +323,7 @@ const ProductDetail = () => {
                             attributeOptions={attributeOptions}
                             selectedAttributes={selectedAttributes}
                             onAttributeSelect={handleAttributeSelect}
+                            
                         />
                     </div>
 

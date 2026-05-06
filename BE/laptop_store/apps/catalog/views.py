@@ -1174,3 +1174,245 @@ Yêu cầu:
                 parts.append(f"Được trang bị {', '.join(highlights)}")
         parts.append("Đảm bảo hiệu năng ổn định và trải nghiệm người dùng xuất sắc.")
         return '. '.join(parts)
+    
+    """
+Thêm vào cuối file apps/catalog/views.py
+─────────────────────────────────────────
+AI Search  : POST /api/products/ai-search
+AI Describe: POST /api/admin/product/ai-description
+"""
+import os
+import re
+import logging
+import anthropic as _anthropic
+from django.db.models import Q, Min
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated, AllowAny
+
+from apps.accounts.permissions import IsAdmin
+from .models import Product, Category
+from .serializers import ProductSerializer
+
+logger = logging.getLogger(__name__)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  AI SEARCH
+# ══════════════════════════════════════════════════════════════════
+class AISearchView(APIView):
+    """
+    POST /api/products/ai-search
+    Body: { "query": "laptop gaming pin trâu dưới 25 triệu RAM 16GB" }
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        query = request.data.get('query', '').strip()
+        if not query:
+            return Response({'error': 'query is required'}, status=400)
+        if len(query) > 300:
+            return Response({'error': 'query too long'}, status=400)
+
+        api_key = os.getenv('ANTHROPIC_API_KEY', '')
+        filters  = self._parse_with_ai(query, api_key) if api_key else self._parse_fallback(query)
+        products = self._search(filters)
+
+        return Response({
+            'query':           query,
+            'filters_applied': filters,
+            'explanation':     filters.get('explanation', f'Kết quả cho: "{query}"'),
+            'total':           len(products),
+            'products':        ProductSerializer(products, many=True).data,
+        })
+
+    # ── Claude parses the query ─────────────────────────────────
+    def _parse_with_ai(self, query, api_key):
+        try:
+            client = _anthropic.Anthropic(api_key=api_key)
+            resp = client.messages.create(
+                model='claude-sonnet-4-20250514',
+                max_tokens=300,
+                messages=[{'role': 'user', 'content': f"""Phân tích câu tìm kiếm laptop/linh kiện và trả về JSON (không markdown, không giải thích):
+{{
+  "min_price": null hoặc số VND,
+  "max_price": null hoặc số VND,
+  "category_slug": null hoặc một trong: "laptop-gaming","laptop-van-phong","laptop-do-hoa","laptop-mong-nhe","macbook","ram-bo-nho","o-cung-ssd","card-man-hinh","ban-phim-chuot","man-hinh",
+  "brand": null hoặc tên thương hiệu thường gặp,
+  "keywords": [],
+  "explanation": "mô tả ngắn kết quả bằng tiếng Việt"
+}}
+
+Lưu ý: 1 triệu = 1000000 VND.
+Câu hỏi: "{query}"
+"""}]
+            )
+            import json
+            return json.loads(resp.content[0].text.strip())
+        except Exception as e:
+            logger.error(f"AI Search parse error: {e}")
+            return self._parse_fallback(query)
+
+    # ── Fallback: regex only ───────────────────────────────────
+    def _parse_fallback(self, query):
+        msg = query.lower()
+        filters = {'keywords': [], 'explanation': f'Tìm kiếm: "{query}"'}
+
+        # Price
+        m = re.search(r'(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*(?:triệu|tr)', msg)
+        if m:
+            filters['min_price'] = float(m.group(1)) * 1e6
+            filters['max_price'] = float(m.group(2)) * 1e6
+        else:
+            m = re.search(r'dưới\s*(\d+(?:\.\d+)?)\s*(?:triệu|tr)', msg)
+            if m: filters['max_price'] = float(m.group(1)) * 1e6
+            m = re.search(r'trên\s*(\d+(?:\.\d+)?)\s*(?:triệu|tr)', msg)
+            if m: filters['min_price'] = float(m.group(1)) * 1e6
+            m = re.search(r'(?:tầm|khoảng)\s*(\d+(?:\.\d+)?)\s*(?:triệu|tr)', msg)
+            if m:
+                v = float(m.group(1)) * 1e6
+                filters['min_price'] = v * 0.8
+                filters['max_price'] = v * 1.2
+
+        # Category
+        CAT_MAP = {
+            ('gaming', 'game', 'rtx', 'gtx'): 'laptop-gaming',
+            ('macbook', 'apple', 'm1', 'm2', 'm3'): 'macbook',
+            ('đồ họa', 'do hoa', 'workstation', 'thiết kế'): 'laptop-do-hoa',
+            ('mỏng nhẹ', 'ultrabook', 'mong nhe'): 'laptop-mong-nhe',
+            ('văn phòng', 'van phong', 'học tập'): 'laptop-van-phong',
+            ('ram', 'ddr4', 'ddr5'): 'ram-bo-nho',
+            ('ssd', 'ổ cứng', 'o cung', 'nvme', 'sata'): 'o-cung-ssd',
+            ('card màn hình', 'gpu', 'vga'): 'card-man-hinh',
+            ('màn hình', 'man hinh', 'monitor'): 'man-hinh',
+            ('bàn phím', 'chuột', 'ban phim', 'keyboard', 'mouse'): 'ban-phim-chuot',
+        }
+        for kws, slug in CAT_MAP.items():
+            if any(k in msg for k in kws):
+                filters['category_slug'] = slug
+                break
+
+        # Brand
+        for brand in ['asus', 'lenovo', 'dell', 'hp', 'msi', 'acer', 'apple', 'lg', 'samsung',
+                      'kingston', 'corsair', 'crucial', 'samsung', 'wd', 'seagate', 'logitech']:
+            if brand in msg:
+                filters['brand'] = brand
+                break
+
+        # Keywords
+        for kw in ['i5', 'i7', 'i9', 'ryzen 5', 'ryzen 7', 'ram 16', 'ram 32', '1tb', '512gb',
+                   'pin trâu', 'mỏng nhẹ', 'oled', '4k', '144hz', '165hz', 'pcie 4', 'rtx 4060']:
+            if kw in msg:
+                filters['keywords'].append(kw)
+
+        return filters
+
+    # ── Database search ────────────────────────────────────────
+    def _search(self, filters):
+        qs = Product.objects.filter(status=True).select_related('category').prefetch_related(
+            'images', 'variations__attributes__attribute_value__attribute_type'
+        ).annotate(min_price=Min('variations__price'))
+
+        if filters.get('min_price'):
+            qs = qs.filter(Q(base_price__gte=filters['min_price']) | Q(min_price__gte=filters['min_price']))
+        if filters.get('max_price'):
+            qs = qs.filter(Q(base_price__lte=filters['max_price']) | Q(min_price__lte=filters['max_price']))
+        if filters.get('category_slug'):
+            qs = qs.filter(category__slug=filters['category_slug'])
+        if filters.get('brand'):
+            qs = qs.filter(name__icontains=filters['brand'])
+        if filters.get('keywords'):
+            kq = Q()
+            for kw in filters['keywords']:
+                kq |= Q(name__icontains=kw) | Q(description__icontains=kw)
+            qs = qs.filter(kq)
+
+        return list(qs.order_by('-featured', '-created_at')[:12])
+
+
+# ══════════════════════════════════════════════════════════════════
+#  AI GENERATE DESCRIPTION
+# ══════════════════════════════════════════════════════════════════
+class AIGenerateDescriptionView(APIView):
+    """
+    POST /api/admin/product/ai-description
+    Body: { "name": "ASUS ROG...", "specs": {...}, "category": "Laptop Gaming", "price": 28990000 }
+    """
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def post(self, request):
+        name     = request.data.get('name', '').strip()
+        specs    = request.data.get('specs', {})
+        category = request.data.get('category', '')
+        price    = request.data.get('price', '')
+
+        if not name:
+            return Response({'error': 'name is required'}, status=400)
+
+        api_key = os.getenv('ANTHROPIC_API_KEY', '')
+        if not api_key:
+            return Response({
+                'description': self._fallback(name, specs, category),
+                'method': 'fallback',
+            })
+
+        try:
+            client = _anthropic.Anthropic(api_key=api_key)
+
+            specs_txt  = '\n'.join(f"- {k}: {v}" for k, v in specs.items()) if specs else 'Không có'
+            price_txt  = f"{int(price):,}đ".replace(',', '.') if price else 'Liên hệ'
+
+            resp = client.messages.create(
+                model='claude-sonnet-4-20250514',
+                max_tokens=300,
+                messages=[{'role': 'user', 'content': f"""Viết mô tả sản phẩm laptop/linh kiện cho website LaptopQTK.
+
+Thông tin:
+- Tên: {name}
+- Danh mục: {category}
+- Giá: {price_txt}
+- Thông số:
+{specs_txt}
+
+Yêu cầu:
+- Tiếng Việt, 3-4 câu súc tích
+- Nêu bật điểm mạnh phù hợp đối tượng khách hàng mục tiêu
+- Tự nhiên, hấp dẫn, không quá kỹ thuật
+- Viết dạng đoạn văn (không dùng bullet points)
+- Tối đa 80 từ
+"""}]
+            )
+            return Response({
+                'description': resp.content[0].text.strip(),
+                'method': 'claude_ai',
+            })
+
+        except Exception as e:
+            logger.error(f"AI Description error: {e}")
+            return Response({
+                'description': self._fallback(name, specs, category),
+                'method': 'fallback',
+                'error': str(e),
+            })
+
+    def _fallback(self, name, specs, category):
+        parts = [f"{name} là lựa chọn tuyệt vời"]
+        CAT_MAP = {
+            'gaming': 'cho game thủ đam mê hiệu năng',
+            'van-phong': 'cho dân văn phòng năng động',
+            'do-hoa': 'cho nhà thiết kế chuyên nghiệp',
+            'mong-nhe': 'cho người thường xuyên di chuyển',
+            'macbook': 'cho người dùng hệ sinh thái Apple',
+            'ram': 'giúp nâng cấp hiệu năng máy tính',
+            'ssd': 'giúp tăng tốc độ khởi động và lưu trữ',
+        }
+        for k, v in CAT_MAP.items():
+            if k in category.lower():
+                parts[0] += f' {v}'
+                break
+        if specs:
+            hi = [f"{k}: {v}" for k, v in list(specs.items())[:3]]
+            if hi: parts.append(f"Trang bị {', '.join(hi)}")
+        parts.append("Đảm bảo hiệu năng ổn định và trải nghiệm xuất sắc.")
+        return '. '.join(parts)
