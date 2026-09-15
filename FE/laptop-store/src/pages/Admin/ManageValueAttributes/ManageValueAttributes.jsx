@@ -6,7 +6,7 @@ import { faPen, faTrash, faSearch } from "@fortawesome/free-solid-svg-icons";
 import AddValueAttribute from "./AddValueAttributes/AddValueAttributes";
 import EditValueAttribute from "./EditValueAttributes/EditValueAttributes";
 import { getAccessTokenFromLS } from "../../../utils/auth";
-import attributeValueApi from "../../../api/AdminApi/AttributeValueApi/AttributeValueApi";
+import AttributeValueApi from "@/api/AdminApi/AttributeValueApi/attributeValueApi";
 
 function ManageValueAttributes() {
     const [valueAttributes, setValueAttributes] = useState([]);
