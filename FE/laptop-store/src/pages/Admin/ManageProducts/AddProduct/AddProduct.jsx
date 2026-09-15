@@ -3,7 +3,7 @@ import Swal from "sweetalert2";
 import axios from "axios";
 import categoryApi from "../../../../api/AdminApi/CategoryApi/categoryApi";
 import productApi from "../../../../api/AdminApi/ProductApi/productApi";
-import attributeValueApi from "../../../../api/AdminApi/AttributeValueApi/AttributeValueApi";
+import AttributeValueApi from "@/api/AdminApi/AttributeValueApi/attributeValueApi";
 import { getAccessTokenFromLS } from "../../../../utils/auth";
 import ImageUploadProduct from "../../../../components/ImgUploadProduct/ImgUploadProduct";
 import { baseUrl } from "../../../../constants/config";

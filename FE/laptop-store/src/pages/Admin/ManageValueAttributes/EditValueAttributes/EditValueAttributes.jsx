@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import attributeTypeApi from "../../../../api/AdminApi/AttributeTypeApi/attributeTypeApi";
 import { getAccessTokenFromLS } from "../../../../utils/auth";
-import attributeValueApi from "../../../../api/AdminApi/AttributeValueApi/attributeValueApi";
+import AttributeValueApi from "@/api/AdminApi/AttributeValueApi/attributeValueApi";
 
 function EditValueAttribute({ attribute, onClose, onSuccess }) {
     const [form, setForm] = useState(attribute);
